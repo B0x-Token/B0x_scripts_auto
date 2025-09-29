@@ -1,4 +1,4 @@
-name: Ethereum Block Fetcher
+name: B0x MinedBlocks fetcher dAPP Mainnet
 
 on:
   schedule:
