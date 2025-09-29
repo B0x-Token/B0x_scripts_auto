@@ -127,25 +127,46 @@ class EthereumBlockFetcher:
         # Get miner address from topics[1]
         miner_address = self.get_miner_address_from_topic(transaction['topics'][1].hex())
         
-        # Process transaction data
+        # Process transaction data - need to handle bytes properly
         data = transaction['data']
         
-        # Extract amount (first 64 hex characters after '0x')
-        if len(data) >= 66:  # '0x' + 64 characters
-            data_amt_hex = data[2:66]  # Remove '0x' and take first 64 chars
-            data_amt = int(data_amt_hex, 16) / (10 ** 18)  # Convert to ETH
+        # Convert bytes to hex string if needed
+        if isinstance(data, bytes):
+            data = data.hex()
+        elif isinstance(data, str) and data.startswith('0x'):
+            data = data[2:]  # Remove 0x prefix
+        elif isinstance(data, str):
+            # Already a hex string without 0x
+            pass
+        else:
+            print(f"Unexpected data type: {type(data)}")
+            return
+        
+        # Extract amount (first 64 hex characters)
+        if len(data) >= 64:
+            data_amt_hex = data[:64]  # First 64 chars
+            try:
+                data_amt = int(data_amt_hex, 16) / (10 ** 18)  # Convert to ETH
+            except ValueError as e:
+                print(f"Error parsing amount: {e}")
+                data_amt = 0
         else:
             data_amt = 0
         
         # Extract epochCount (next 64 chars after amount)
-        if len(data) >= 130:  # '0x' + 64 chars (amount) + 64 chars (epochCount)
-            epoch_count_hex = data[66:130]  # Characters 66-130
-            epoch_count = int(epoch_count_hex, 16)
+        if len(data) >= 128:
+            epoch_count_hex = data[64:128]  # Characters 64-128
+            try:
+                epoch_count = int(epoch_count_hex, 16)
+            except ValueError as e:
+                print(f"Error parsing epoch count: {e}")
+                epoch_count = 0
         else:
             epoch_count = 0
 
-        if len(data) >= 194:
-            challenger = data[130:194]
+        # Extract challenger (next 64 chars)
+        if len(data) >= 192:
+            challenger = data[128:192]  # Characters 128-192
             
             if self.previous_challenge != challenger:
                 previous_challenge2 = self.previous_challenge
@@ -155,14 +176,15 @@ class EthereumBlockFetcher:
                 if previous_challenge2 is not None:
                     # Create new block entry for challenge change
                     first_block_num = self.mined_blocks[0][0] if self.mined_blocks else block_number
-                    first_epoch_count =  self.mined_blocks[0][4] if self.mined_blocks else 0
-                    first_miner_address =  self.mined_blocks[0][2] if self.mined_blocks else miner_address
-                    first_tx_hash =  self.mined_blocks[0][1] if self.mined_blocks else tx_hash
+                    first_epoch_count = self.mined_blocks[0][4] if self.mined_blocks else 0
+                    first_miner_address = self.mined_blocks[0][2] if self.mined_blocks else miner_address
+                    first_tx_hash = self.mined_blocks[0][1] if self.mined_blocks else tx_hash
                     new_block = [first_block_num, first_tx_hash, first_miner_address, -1, first_epoch_count]
                     self.mined_blocks.insert(0, new_block)
         
         # Add the actual mined block
         self.mined_blocks.insert(0, [block_number, tx_hash, miner_address, data_amt, epoch_count])
+        print(f"Processed block {block_number}: {miner_address}, amount: {data_amt}, epoch: {epoch_count}")
         
     def save_mined_blocks_to_file(self, current_block, filename: str = "uu_mined_blocks_testnet.json"):
         """Save mined blocks to JSON files - simplified for GitHub Actions"""
@@ -176,13 +198,12 @@ class EthereumBlockFetcher:
             'previous_challenge': self.previous_challenge
         }
         
-        if len(self.mined_blocks) >= 0:
-            try:
-                with open(filename, 'w') as f:
-                    json.dump(output_data, f, indent=2)
-                print(f"Saved {len(self.mined_blocks)} mined blocks to {filename}")
-            except Exception as e:
-                print(f"Error saving file {filename}: {e}")
+        try:
+            with open(filename, 'w') as f:
+                json.dump(output_data, f, indent=2)
+            print(f"Saved {len(self.mined_blocks)} mined blocks to {filename}")
+        except Exception as e:
+            print(f"Error saving file {filename}: {e}")
     
     def run_github_actions(self, batch_size: int = 499, max_runtime_minutes: int = 20):
         """
@@ -252,135 +273,6 @@ class EthereumBlockFetcher:
             if hasattr(self, 'mined_blocks') and len(self.mined_blocks) > 0:
                 self.save_mined_blocks_to_file(start_block)
 
-    def run_once(self, batch_size: int = 499):
-        """
-        Run the fetcher once (for compatibility with original script)
-        
-        Args:
-            batch_size: Number of blocks to process in each batch
-        """
-        try:
-            print(f"\n[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Starting block fetch...")
-            
-            # Load the last processed block
-            start_block = self.load_last_processed_block()
-            current_block = self.w3.eth.get_block('latest')['number']
-            
-            print(f"Starting from block: {start_block}")
-            print(f"Current block: {current_block}")
-            
-            if start_block > current_block:
-                print("Already up to date!")
-                return
-            
-            # Process blocks in batches with loop counter for progress saving
-            current_start = start_block
-            loop_counter = 0
-            
-            current_end = start_block
-            while current_start <= current_block:
-                time.sleep(1.6)
-                current_end = min(current_start + batch_size - 1, current_block)
-                
-                print(f"Processing blocks {current_start} to {current_end} (Loop {loop_counter + 1})")
-                
-                # Fetch logs for this batch
-                logs = self.fetch_logs(current_start, current_end)
-                
-                # Process each transaction
-                for transaction in logs:
-                    self.process_transaction(transaction)
-                
-                # Save progress every 10 loops
-                loop_counter += 1
-                if loop_counter % 50 == 0:
-                    print(f"Saving progress after %50 loops pausing 25 seconds")
-                    self.save_mined_blocks_to_file(current_end)
-                    time.sleep(25)
-                else:
-                    # Always save the last processed block for resumption
-                    print(f"Saving progress after {loop_counter} loops...")
-                    self.save_mined_blocks_to_file(current_end)
-                
-                # Move to next batch
-                current_start = current_end + 1
-            
-            # Save final results (in case total loops wasn't a multiple of 10)
-            print("Saving final results...")
-            self.save_mined_blocks_to_file(current_end)
-            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Processing complete!")
-            
-        except Exception as e:
-            print(f"Error during fetch: {e}")
-    
-    def scheduler_loop(self, interval_minutes: int = 3, batch_size: int = 499):
-        """
-        Main scheduler loop that runs every interval_minutes
-        
-        Args:
-            interval_minutes: How often to run in minutes
-            batch_size: Number of blocks to process in each batch
-        """
-        interval_seconds = interval_minutes * 60
-        
-        while self.running:
-            # Run the fetcher
-            self.run_once(batch_size)
-            
-            # Wait for the next interval or until stopped
-            for _ in range(interval_seconds):
-                if not self.running:
-                    break
-                time.sleep(1)
-    
-    def start_scheduler(self, interval_minutes: int = 3, batch_size: int = 499):
-        """
-        Start the scheduler in a separate thread
-        
-        Args:
-            interval_minutes: How often to run in minutes (default: 3)
-            batch_size: Number of blocks to process in each batch
-        """
-        if self.running:
-            print("Scheduler is already running!")
-            return
-        
-        self.running = True
-        self.scheduler_thread = threading.Thread(
-            target=self.scheduler_loop,
-            args=(interval_minutes, batch_size),
-            daemon=True
-        )
-        self.scheduler_thread.start()
-        
-        print(f"Started scheduler! Will run every {interval_minutes} minutes.")
-        print("Press Ctrl+C to stop the scheduler.")
-    
-    def stop_scheduler(self):
-        """Stop the scheduler"""
-        self.running = False
-        if self.scheduler_thread:
-            self.scheduler_thread.join(timeout=5)
-        print("Scheduler stopped.")
-    
-    def run_continuously(self, interval_minutes: int = 3, batch_size: int = 499):
-        """
-        Run the fetcher continuously every interval_minutes
-        
-        Args:
-            interval_minutes: How often to run in minutes (default: 3)
-            batch_size: Number of blocks to process in each batch
-        """
-        self.start_scheduler(interval_minutes, batch_size)
-        
-        try:
-            # Keep the main thread alive
-            while self.running:
-                time.sleep(1)
-        except KeyboardInterrupt:
-            print("\nReceived interrupt signal...")
-            self.stop_scheduler()
-
 # GitHub Actions optimized main execution
 if __name__ == "__main__":
     try:
@@ -388,7 +280,7 @@ if __name__ == "__main__":
         RPC_URL = os.environ.get('RPC_URL')
         if not RPC_URL:
             # Use the default from your original script if no environment variable
-            RPC_URL = "https://base.llamarpc.com"
+            RPC_URL = "https://base-mainnet.g.alchemy.com/v2/WZTarDgfomC-hjuFJKIrH"
             print(f"No RPC_URL environment variable found, using default RPC endpoint")
         else:
             print(f"Using RPC_URL from environment variable")
