@@ -388,7 +388,7 @@ if __name__ == "__main__":
         RPC_URL = os.environ.get('RPC_URL')
         if not RPC_URL:
             # Use the default from your original script if no environment variable
-            RPC_URL = "https://base-mainnet.g.alchemy.com/v2/WZTarDgfomC-hjuFJKIrH"
+            RPC_URL = "https://base.llamarpc.com"
             print(f"No RPC_URL environment variable found, using default RPC endpoint")
         else:
             print(f"Using RPC_URL from environment variable")
