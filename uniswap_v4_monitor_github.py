@@ -1038,7 +1038,7 @@ def main():
         print(f"Using RPC_URL from environment variable")
     
     START_BLOCK = 35956776
-    SAVE_FILE = "uniswap_v4_data_testnet.json"
+    SAVE_FILE = "testnet_uniswap_v4_data.json"
     
     print(f"Connecting to RPC: {RPC_URL[:50]}...")
     
