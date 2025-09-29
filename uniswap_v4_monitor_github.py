@@ -502,18 +502,37 @@ class UniswapV4Monitor:
             # Prepare calls for aggregate3
             calls = []
             for token_id in token_ids:
-                # Use the newer encode_abi method or fallback to encodeABI for older versions
+                # Try different methods to encode the function call
+                call_data = None
+                
+                # Method 1: Try newer Web3.py approach
                 try:
-                    call_data = position_contract.encode_abi(fn_name='getPoolAndPositionInfo', args=[token_id])
-                except AttributeError:
-                    # Fallback for older Web3.py versions
+                    call_data = position_contract.encode_abi('getPoolAndPositionInfo', [token_id])
+                except (AttributeError, TypeError):
+                    pass
+                
+                # Method 2: Try older Web3.py approach  
+                if call_data is None:
                     try:
                         call_data = position_contract.encodeABI(fn_name='getPoolAndPositionInfo', args=[token_id])
-                    except AttributeError:
-                        # Manual encoding as last resort
-                        function_selector = "0x7ba03aad"  # getPoolAndPositionInfo(uint256)
-                        encoded_token_id = hex(token_id)[2:].zfill(64)  # Pad to 32 bytes
-                        call_data = function_selector + encoded_token_id
+                    except (AttributeError, TypeError):
+                        pass
+                
+                # Method 3: Try direct function call encoding
+                if call_data is None:
+                    try:
+                        call_data = position_contract.get_function_by_name('getPoolAndPositionInfo')(token_id).buildTransaction({
+                            'to': self.nft_address,
+                            'from': '0x0000000000000000000000000000000000000000'
+                        })['data']
+                    except (AttributeError, TypeError):
+                        pass
+                
+                # Method 4: Manual encoding as last resort
+                if call_data is None:
+                    function_selector = "0x7ba03aad"  # getPoolAndPositionInfo(uint256)
+                    encoded_token_id = hex(token_id)[2:].zfill(64)  # Pad to 32 bytes
+                    call_data = function_selector + encoded_token_id
                 
                 calls.append({
                     'target': self.nft_address,
