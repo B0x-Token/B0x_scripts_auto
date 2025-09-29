@@ -322,7 +322,7 @@ jobs:
                 
                 async function loadUniswapData() {
                     try {
-                        const response = await fetch('uniswap_v4_data_testnet.json');
+                        const response = await fetch('testnet_uniswap_v4_data.json');
                         const data = await response.json();
                         
                         // Update Uniswap stats
