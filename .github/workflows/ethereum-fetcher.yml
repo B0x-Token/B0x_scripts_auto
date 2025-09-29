@@ -43,17 +43,28 @@ jobs:
       continue-on-error: true
       run: |
         # Try to download the previous data file if it exists
-        if curl -f -o data/uu_mined_blocks_testnet.json "https://github.com/${{ github.repository }}/releases/latest/download/uu_mined_blocks_testnet.json"; then
-          echo "Downloaded previous data file"
+        echo "Attempting to download previous data file..."
+        if curl -f -L -o uu_mined_blocks_testnet.json "https://github.com/${{ github.repository }}/releases/latest/download/uu_mined_blocks_testnet.json"; then
+          echo "Downloaded previous data file successfully"
+          ls -la uu_mined_blocks_testnet.json
         else
-          echo "No previous data file found, starting fresh"
+          echo "No previous data file found or download failed, starting fresh"
+          echo "This is normal for the first run"
         fi
     
     - name: Run Ethereum Block Fetcher
       env:
         RPC_URL: ${{ secrets.RPC_URL }}
       run: |
-        # Modify the script to run once and exit instead of continuous loop
+        # Check if RPC_URL secret is set
+        if [ -z "$RPC_URL" ]; then
+          echo "Warning: RPC_URL secret not set, using default endpoint"
+          echo "Please set RPC_URL secret in repository settings for production use"
+        else
+          echo "Using RPC_URL from secrets"
+        fi
+        
+        # Run the script
         python ethereum_block_fetcher_github.py
       timeout-minutes: 25  # GitHub Actions has a 6-hour limit, but we want shorter runs
     
