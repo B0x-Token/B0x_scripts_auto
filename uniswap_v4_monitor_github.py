@@ -502,7 +502,19 @@ class UniswapV4Monitor:
             # Prepare calls for aggregate3
             calls = []
             for token_id in token_ids:
-                call_data = position_contract.encodeABI(fn_name='getPoolAndPositionInfo', args=[token_id])
+                # Use the newer encode_abi method or fallback to encodeABI for older versions
+                try:
+                    call_data = position_contract.encode_abi(fn_name='getPoolAndPositionInfo', args=[token_id])
+                except AttributeError:
+                    # Fallback for older Web3.py versions
+                    try:
+                        call_data = position_contract.encodeABI(fn_name='getPoolAndPositionInfo', args=[token_id])
+                    except AttributeError:
+                        # Manual encoding as last resort
+                        function_selector = "0x7ba03aad"  # getPoolAndPositionInfo(uint256)
+                        encoded_token_id = hex(token_id)[2:].zfill(64)  # Pad to 32 bytes
+                        call_data = function_selector + encoded_token_id
+                
                 calls.append({
                     'target': self.nft_address,
                     'allowFailure': True,  # Allow individual calls to fail
