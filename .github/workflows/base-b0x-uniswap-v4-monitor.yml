@@ -50,7 +50,7 @@ jobs:
           echo "No existing Uniswap data file found in mainnetB0x directory"
         fi
     
-    - name: Run 4Uniswap V4 Monitor
+    - name: Run Uniswap V4 Monitor
       env:
         RPC_URL: ${{ secrets.RPC_URL }}
       run: |
@@ -73,6 +73,23 @@ jobs:
           echo "Uniswap data file was not created"
         fi
     
+    - name: Update mainnetB0x README for Uniswap data
+      if: steps.move_uniswap_file.outputs.file_exists == 'true'
+      run: |
+        # Update the existing README to include Uniswap data info
+        if [ -f "mainnetB0x/README.md" ]; then
+          # Check if Uniswap section already exists
+          if ! grep -q "uniswap_v4_data_testnet.json" mainnetB0x/README.md; then
+            echo "" >> mainnetB0x/README.md
+            echo "## Uniswap V4 Data" >> mainnetB0x/README.md
+            echo "" >> mainnetB0x/README.md
+            echo "- \`uniswap_v4_data_testnet.json\` - Uniswap V4 position monitoring data" >> mainnetB0x/README.md
+            echo "- **Uniswap Data**: [uniswap_v4_data_testnet.json](https://raw.githubusercontent.com/${{ github.repository }}/main/mainnetB0x/uniswap_v4_data_testnet.json)" >> mainnetB0x/README.md
+            echo "" >> mainnetB0x/README.md
+            echo "Updated automatically every 30 minutes via GitHub Actions." >> mainnetB0x/README.md
+          fi
+        fi
+    
     - name: Update HTML interface for Uniswap data
       if: steps.move_uniswap_file.outputs.file_exists == 'true'
       run: |
@@ -80,36 +97,17 @@ jobs:
         if [ -f "mainnetB0x/index.html" ]; then
           # Check if Uniswap link already exists
           if ! grep -q "uniswap_v4_data_testnet.json" mainnetB0x/index.html; then
-            # Create a temporary file with the new content
-            python3 << 'PYTHON_EOF'
-import re
-
-# Read the HTML file
-with open('mainnetB0x/index.html', 'r') as f:
-    content = f.read()
-
-# Define the new link card HTML (single line to avoid YAML issues)
-new_card = '<div class="link-card"><strong>Uniswap V4 Data</strong><br><a href="uniswap_v4_data_testnet.json" target="_blank">uniswap_v4_data_testnet.json</a></div>'
-
-# Find the pattern to insert after
-pattern = r'(<div class="link-card">.*?</div>)(\s*</div>\s*</div>)'
-match = re.search(pattern, content, re.DOTALL)
-
-if match:
-    # Insert the new card before the closing divs
-    new_content = content.replace(match.group(0), match.group(1) + '\n                        ' + new_card + '\n' + match.group(2))
-    
-    # Write back to file
-    with open('mainnetB0x/index.html', 'w') as f:
-        f.write(new_content)
-    
-    print("Successfully added Uniswap data link to HTML interface")
-else:
-    print("Could not find insertion point in HTML file")
-PYTHON_EOF
+            # Use sed to insert the new link card
+            sed -i '/<div class="link-card">/i\
+                        <div class="link-card">\
+                            <strong>Uniswap V4 Data</strong><br>\
+                            <a href="uniswap_v4_data_testnet.json" target="_blank">uniswap_v4_data_testnet.json</a>\
+                        </div>' mainnetB0x/index.html
+            
+            echo "Successfully added Uniswap data link to HTML interface"
           fi
         fi
-        
+    
     - name: Configure Git
       if: steps.move_uniswap_file.outputs.file_exists == 'true'
       run: |
@@ -133,11 +131,11 @@ PYTHON_EOF
           git commit -m "Update Uniswap V4 data: ${VALID_POSITIONS} valid positions (block: ${CURRENT_BLOCK}) - ${TIMESTAMP}"
           git push
           
-          echo "✅ Uniswap data files committed and pushed successfully!"
-          echo "📊 Valid positions: ${VALID_POSITIONS}"
-          echo "🔗 Access your Uniswap data at:"
-          echo "   📄 JSON: https://raw.githubusercontent.com/${{ github.repository }}/main/mainnetB0x/uniswap_v4_data_testnet.json"
-          echo "   🌐 Web:  https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/mainnetB0x/"
+          echo "Uniswap data files committed and pushed successfully!"
+          echo "Valid positions: ${VALID_POSITIONS}"
+          echo "Access your Uniswap data at:"
+          echo "   JSON: https://raw.githubusercontent.com/${{ github.repository }}/main/mainnetB0x/uniswap_v4_data_testnet.json"
+          echo "   Web:  https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/mainnetB0x/"
         fi
     
     - name: Upload Uniswap artifacts (backup)
