@@ -709,10 +709,7 @@ class UniswapV4Monitor:
         print(f"Validation complete: {len(valid_positions)} valid, {len(invalid_positions)} invalid")
         return valid_positions, invalid_positions
 
-
-
-
-def batch_validate_positions(self, position_data: List[Tuple[int, str, int]], batch_size: int = 20) -> Tuple[List[Position], List[Position]]:
+    def batch_validate_positions(self, position_data: List[Tuple[int, str, int]], batch_size: int = 20) -> Tuple[List[Position], List[Position]]:
         """
         Validate positions in batches to avoid overwhelming the RPC endpoint
         """
@@ -739,27 +736,27 @@ def batch_validate_positions(self, position_data: List[Tuple[int, str, int]], ba
         """Calculate block ranges to stay within log and block limits"""
         ranges = []
         current = from_block
-        
+            
         while current <= to_block:
-            # Use the smaller of max_blocks_per_request or remaining blocks
+                # Use the smaller of max_blocks_per_request or remaining blocks
             end_block = min(current + self.max_blocks_per_request - 1, to_block)
             ranges.append((current, end_block))
             current = end_block + 1
-            
+                
         return ranges
 
     def get_newly_minted_positions(self, transfer_logs):
         """Extract token IDs that were minted (transferred from zero address)"""
         newly_minted = []
         zero_address = "0x0000000000000000000000000000000000000000000000000000000000000000"
-        
+            
         for log in transfer_logs:
             # Transfer event structure: Transfer(address indexed from, address indexed to, uint256 indexed tokenId)
             # topics[0] = event signature
             # topics[1] = from address
             # topics[2] = to address
             # topics[3] = tokenId
-            
+                
             if len(log['topics']) >= 4:
                 from_address = log['topics'][1]
                 token_id = int(log['topics'][3], 16)  # Convert hex to int
@@ -768,22 +765,22 @@ def batch_validate_positions(self, position_data: List[Tuple[int, str, int]], ba
                 if from_address.lower() == zero_address.lower():
                     newly_minted.append(token_id)
                     print(f"  Found newly minted token: {token_id}")
-        
+            
         return newly_minted
 
     def scan_blocks(self, from_block: int, to_block: int):
         """Scan a range of blocks for events"""
         print(f"\nScanning blocks {from_block} to {to_block}...")
-        
+            
         # Split into smaller ranges if needed
         block_ranges = self.calculate_block_range(from_block, to_block)
-        
+            
         all_new_positions = []
         all_transfers = {}
-        
+            
         for start, end in block_ranges:
             print(f"  Scanning sub-range: {start} to {end} ({end - start + 1} blocks)")
-            
+                
             # Get Transfer logs with retry
             transfer_logs = self.get_logs(
                 from_block=start,
@@ -791,20 +788,20 @@ def batch_validate_positions(self, position_data: List[Tuple[int, str, int]], ba
                 topics=[self.transfer_topic],
                 address=self.nft_address
             )
-            
+                
             print(f"    Found {len(transfer_logs)} Transfer events")
-            
+                
             if transfer_logs:
                 # Process all transfers
                 transfers = self.process_transfer_logs(transfer_logs)
                 all_transfers.update(transfers)
-                
+                    
                 # Identify new position creations (transfers from zero address)
                 new_position_token_ids = self.get_newly_minted_positions(transfer_logs)
-                
+                    
                 if new_position_token_ids:
                     print(f"    Found {len(new_position_token_ids)} newly minted positions")
-                    
+                        
                     # Validate new positions using the MultiCall implementation
                     # Convert token_ids to position_data format for validate_positions
                     position_data = []
@@ -817,26 +814,26 @@ def batch_validate_positions(self, position_data: List[Tuple[int, str, int]], ba
                                 log['topics'][1].lower() == "0x0000000000000000000000000000000000000000000000000000000000000000"):
                                 tx_hash = log.get('transactionHash', '')
                                 break
-                        
+                            
                         position_data.append((token_id, tx_hash, end))
-                    
+                        
                     # Validate positions using MultiCall
                     valid, invalid = self.validate_positions(position_data)
-                    
+                        
                     # Add to our collections
                     self.valid_positions.extend(valid)
                     self.invalid_positions.extend(invalid)
-                    
+                        
                     # Track these as new positions found
                     all_new_positions.extend(new_position_token_ids)
-                    
+                        
                     print(f"    Validation results: {len(valid)} valid, {len(invalid)} invalid positions")
-        
+            
         # Update NFT ownership for all transfers
         if all_transfers:
             print(f"  Updating NFT ownership for {len(all_transfers)} transfers")
             self.nft_owners.update(all_transfers)
-            
+                
             # Update ownership info in valid positions
             updated_count = 0
             for position in self.valid_positions:
@@ -846,14 +843,14 @@ def batch_validate_positions(self, position_data: List[Tuple[int, str, int]], ba
                     if old_owner != position.owner:
                         updated_count += 1
                         print(f"    Updated owner for token {position.token_id}: {old_owner} -> {position.owner}")
-            
+                
             if updated_count > 0:
                 print(f"  Updated ownership for {updated_count} valid positions")
-        
+            
         # Summary for this block range
         if all_new_positions:
             print(f"  Block range summary: {len(all_new_positions)} new positions discovered")
-        
+            
         return all_new_positions
 
     def _get_latest_block_internal(self) -> int:
@@ -976,7 +973,7 @@ def batch_validate_positions(self, position_data: List[Tuple[int, str, int]], ba
                 # Wait before checking for new blocks
                 print(f"Waiting {sleep_seconds}s before checking for new blocks...")
                 time.sleep(sleep_seconds)
-                    
+                        
         except KeyboardInterrupt:
             print("\nStopping monitor...")
             self.save_data()
