@@ -938,7 +938,7 @@ class UniswapV4Monitor:
         else:
             print(f"No valid NFT owners being tracked")
 
-    def run_once(self, blocks_per_scan: int = 1000, max_total_blocks: int = 500000):
+    def run_once(self, blocks_per_scan: int = 1000, max_total_blocks: int = 50000):
         """Run scan cycles until caught up to latest block or max_total_blocks reached"""
         latest_block = self.get_latest_block()
         total_blocks_scanned = 0
