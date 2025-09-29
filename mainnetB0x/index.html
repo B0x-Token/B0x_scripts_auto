@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>B0x Mining Data - Base Mainnet</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            margin: 0; 
+            padding: 20px; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container { 
+            max-width: 1000px; 
+            margin: 0 auto; 
+            background: white; 
+            border-radius: 10px; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(45deg, #1e3c72, #2a5298);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .stats { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
+            gap: 20px; 
+            padding: 20px; 
+            background: #f8f9fa;
+        }
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2a5298;
+        }
+        .stat-label {
+            color: #666;
+            margin-top: 5px;
+        }
+        .links { 
+            padding: 20px; 
+            background: #e3f2fd; 
+        }
+        .link-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+        .link-card {
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 4px solid #2a5298;
+        }
+        .link-card a {
+            color: #1565c0;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .link-card a:hover {
+            text-decoration: underline;
+        }
+        .recent-blocks {
+            padding: 20px;
+        }
+        .block-item {
+            background: #f5f5f5;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 B0x Mining Data</h1>
+            <p>Base Mainnet • Real-time Mining Statistics</p>
+        </div>
+        
+        <div class="stats" id="stats-grid">
+            <div class="loading">Loading statistics...</div>
+        </div>
+        
+        <div class="links">
+            <h3>📡 Direct Data Access</h3>
+            <div class="link-grid">
+                <div class="link-card">
+                    <strong>Main Data File</strong><br>
+                    <a href="uu_mined_blocks_testnet.json" target="_blank">uu_mined_blocks_testnet.json</a>
+                </div>
+                <div class="link-card">
+                    <strong>Latest Copy</strong><br>
+                    <a href="latest.json" target="_blank">latest.json</a>
+                </div>
+                <div class="link-card">
+                    <strong>GitHub Raw</strong><br>
+                    <a href="https://raw.githubusercontent.com/B0x-Token/B0x_scripts_auto/main/mainnetB0x/uu_mined_blocks_testnet.json" target="_blank">Raw JSON</a>
+                </div>
+                <div class="link-card">
+                    <strong>Contract</strong><br>
+                    <a href="#" id="contract-link" target="_blank">View on BaseScan</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="recent-blocks">
+            <h3>📊 Recent Mining Activity</h3>
+            <div id="recent-blocks-content" class="loading">Loading recent blocks...</div>
+        </div>
+    </div>
+    
+    <script>
+        async function loadData() {
+            try {
+                const response = await fetch('latest.json');
+                const data = await response.json();
+                
+                // Update stats
+                const statsGrid = document.getElementById('stats-grid');
+                statsGrid.innerHTML = `
+                    <div class="stat-card">
+                        <div class="stat-value">${data.total_blocks.toLocaleString()}</div>
+                        <div class="stat-label">Total Blocks Mined</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${data.latest_block_number.toLocaleString()}</div>
+                        <div class="stat-label">Latest Block Processed</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${new Date(data.last_updated * 1000).toLocaleDateString()}</div>
+                        <div class="stat-label">Last Updated</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${new Date(data.last_updated * 1000).toLocaleTimeString()}</div>
+                        <div class="stat-label">Update Time</div>
+                    </div>
+                `;
+                
+                // Update contract link
+                document.getElementById('contract-link').href = `https://basescan.org/address/${data.contract_address}`;
+                
+                // Show recent blocks
+                const recentBlocks = data.mined_blocks.slice(0, 10);
+                const recentBlocksContent = document.getElementById('recent-blocks-content');
+                recentBlocksContent.innerHTML = recentBlocks.map(block => `
+                    <div class="block-item">
+                        Block: ${block[0]} | Miner: ${block[2]} | Amount: ${block[3]} | Epoch: ${block[4]}
+                    </div>
+                `).join('');
+                
+            } catch (error) {
+                console.error('Error loading data:', error);
+                document.getElementById('stats-grid').innerHTML = '<div class="loading">Error loading data</div>';
+                document.getElementById('recent-blocks-content').innerHTML = '<div class="loading">Error loading recent blocks</div>';
+            }
+        }
+        
+        loadData();
+        
+        // Auto-refresh every 5 minutes
+        setInterval(loadData, 5 * 60 * 1000);
+    </script>
+</body>
+</html>
