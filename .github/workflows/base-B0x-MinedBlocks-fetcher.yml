@@ -3,7 +3,7 @@ name: Ethereum Block Fetcher
 on:
   schedule:
     # Runs every 30 minutes
-    - cron: '*/30 * * * *'
+    - cron: '0,30 * * * *'
   workflow_dispatch: # Allows manual triggering
   push:
     branches: [ main ]  # Also runs on pushes to main for testing
@@ -206,7 +206,7 @@ jobs:
         <body>
             <div class="container">
                 <div class="header">
-                    <h1>🚀 B0x Mining Data</h1>
+                    <h1>B0x Mining Data</h1>
                     <p>Base Mainnet • Real-time Mining Statistics</p>
                 </div>
                 
@@ -215,7 +215,7 @@ jobs:
                 </div>
                 
                 <div class="links">
-                    <h3>📡 Direct Data Access</h3>
+                    <h3>Direct Data Access</h3>
                     <div class="link-grid">
                         <div class="link-card">
                             <strong>Main Data File</strong><br>
@@ -237,7 +237,7 @@ jobs:
                 </div>
                 
                 <div class="recent-blocks">
-                    <h3>📊 Recent Mining Activity</h3>
+                    <h3>Recent Mining Activity</h3>
                     <div id="recent-blocks-content" class="loading">Loading recent blocks...</div>
                 </div>
             </div>
@@ -303,29 +303,60 @@ jobs:
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action Bot"
     
-    - name: Commit and push data files
+    - name: Pull latest changes before committing
       if: steps.move_file.outputs.file_exists == 'true'
       run: |
-        git add mainnetB0x/
+        git pull origin main || true
+    
+    - name: Commit and push data files with retry logic
+      if: steps.move_file.outputs.file_exists == 'true'
+      run: |
+        # Only add Ethereum-specific files
+        git add mainnetB0x/uu_mined_blocks_testnet.json mainnetB0x/latest.json mainnetB0x/README.md mainnetB0x/index.html
         
         # Check if there are changes to commit
         if git diff --staged --quiet; then
           echo "No changes to commit"
-        else
+          exit 0
+        fi
+        
+        # Retry logic for concurrent workflows
+        for attempt in {1..5}; do
+          echo "Commit attempt $attempt"
+          
           # Get current timestamp and block info for commit message
           TIMESTAMP=$(date +'%Y-%m-%d %H:%M:%S UTC')
           TOTAL_BLOCKS=$(python -c "import json; data=json.load(open('mainnetB0x/uu_mined_blocks_testnet.json')); print(data.get('total_blocks', 0))")
           LATEST_BLOCK=$(python -c "import json; data=json.load(open('mainnetB0x/uu_mined_blocks_testnet.json')); print(data.get('latest_block_number', 'unknown'))")
           
-          git commit -m "🔄 Update B0x mining data: ${TOTAL_BLOCKS} blocks processed (latest: ${LATEST_BLOCK}) - ${TIMESTAMP}"
-          git push
+          if git commit -m "Update B0x mining data: ${TOTAL_BLOCKS} blocks processed (latest: ${LATEST_BLOCK}) - ${TIMESTAMP}"; then
+            # Try to push
+            if git push origin main; then
+              echo "Successfully pushed on attempt $attempt"
+              echo "Total blocks processed: ${TOTAL_BLOCKS}"
+              echo "Access your data at:"
+              echo "   JSON: https://raw.githubusercontent.com/${{ github.repository }}/main/mainnetB0x/uu_mined_blocks_testnet.json"
+              echo "   Web:  https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/mainnetB0x/"
+              break
+            else
+              echo "Push failed on attempt $attempt - another workflow may have pushed first"
+              # Pull the latest changes and try again
+              git reset --soft HEAD~1  # Undo the commit but keep changes staged
+              git pull origin main || git pull origin main --no-rebase
+              
+              # Add a small random delay to reduce collision probability
+              sleep $((RANDOM % 10 + 5))
+            fi
+          else
+            echo "Commit failed on attempt $attempt"
+            break
+          fi
           
-          echo "✅ Data files committed and pushed successfully!"
-          echo "📊 Total blocks processed: ${TOTAL_BLOCKS}"
-          echo "🔗 Access your data at:"
-          echo "   📄 JSON: https://raw.githubusercontent.com/${{ github.repository }}/main/mainnetB0x/uu_mined_blocks_testnet.json"
-          echo "   🌐 Web:  https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/mainnetB0x/"
-        fi
+          if [ $attempt -eq 5 ]; then
+            echo "Failed to push after 5 attempts - this may need manual intervention"
+            exit 1
+          fi
+        done
     
     - name: Upload artifacts (backup)
       uses: actions/upload-artifact@v4
