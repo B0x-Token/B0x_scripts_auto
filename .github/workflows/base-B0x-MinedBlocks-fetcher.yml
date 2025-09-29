@@ -1,4 +1,4 @@
-name: B0x MinedBlocks fetcher dAPP Mainnet
+name: Ethereum Block Fetcher
 
 on:
   schedule:
@@ -33,7 +33,6 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install web3
-        # Add any other dependencies your script needs
     
     - name: Create data directory
       run: |
@@ -42,7 +41,6 @@ jobs:
     - name: Download previous data
       continue-on-error: true
       run: |
-        # Try to download the previous data file if it exists
         echo "Attempting to download previous data file..."
         if curl -f -L -o uu_mined_blocks_testnet.json "https://github.com/${{ github.repository }}/releases/latest/download/uu_mined_blocks_testnet.json"; then
           echo "Downloaded previous data file successfully"
@@ -52,33 +50,36 @@ jobs:
           echo "This is normal for the first run"
         fi
     
-    - name: Run Ethereum Block Fetcher
-      env:
-        RPC_URL: ${{ secrets.RPC_URL }}
+    - name: Set RPC URL
       run: |
-        # Check if RPC_URL secret is set
-        if [ -z "$RPC_URL" ]; then
-          echo "Warning: RPC_URL secret not set, using default endpoint"
-          echo "Please set RPC_URL secret in repository settings for production use"
+        # Set a default RPC URL if the secret is not available
+        if [ -z "${{ secrets.RPC_URL }}" ]; then
+          echo "RPC_URL secret not set, will use default in script"
+          echo "RPC_URL_TO_USE=" >> $GITHUB_ENV
         else
           echo "Using RPC_URL from secrets"
+          echo "RPC_URL_TO_USE=${{ secrets.RPC_URL }}" >> $GITHUB_ENV
         fi
-        
-        # Run the script
+    
+    - name: Run Ethereum Block Fetcher
+      env:
+        RPC_URL: ${{ env.RPC_URL_TO_USE }}
+      run: |
+        echo "Starting Ethereum Block Fetcher..."
         python ethereum_block_fetcher_github.py
-      timeout-minutes: 25  # GitHub Actions has a 6-hour limit, but we want shorter runs
+      timeout-minutes: 25
     
     - name: Upload results as artifacts
       uses: actions/upload-artifact@v4
+      if: always()  # Upload even if there were errors
       with:
-        name: mined-blocks-data
+        name: mined-blocks-data-${{ github.run_number }}
         path: |
           uu_mined_blocks_testnet.json
-          data/
         retention-days: 30
     
     - name: Create Release with Data
-      if: success()
+      if: success() && hashFiles('uu_mined_blocks_testnet.json') != ''
       uses: softprops/action-gh-release@v1
       with:
         tag_name: data-${{ github.run_number }}
