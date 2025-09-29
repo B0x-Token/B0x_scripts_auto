@@ -938,27 +938,45 @@ class UniswapV4Monitor:
         else:
             print(f"No valid NFT owners being tracked")
 
-    def run_once(self, blocks_per_scan: int = 1000):
-        """Run a single scan cycle to the latest block"""
+    def run_once(self, blocks_per_scan: int = 1000, max_total_blocks: int = 10000):
+        """Run scan cycles until caught up to latest block or max_total_blocks reached"""
         latest_block = self.get_latest_block()
+        total_blocks_scanned = 0
         
-        if self.current_block <= latest_block:
-            # Calculate how many blocks to scan (don't exceed blocks_per_scan in one go)
-            blocks_to_scan = min(blocks_per_scan, latest_block - self.current_block + 1)
+        print(f"Starting scan. Current block: {self.current_block}, Latest block: {latest_block}")
+        
+        while self.current_block <= latest_block and total_blocks_scanned < max_total_blocks:
+            # Calculate how many blocks to scan in this iteration
+            remaining_blocks = latest_block - self.current_block + 1
+            blocks_to_scan = min(blocks_per_scan, remaining_blocks, max_total_blocks - total_blocks_scanned)
             to_block = self.current_block + blocks_to_scan - 1
             
-            print(f"Latest block: {latest_block}, Current: {self.current_block}, Scanning to: {to_block}")
+            print(f"\nIteration: Current {self.current_block}, Scanning to {to_block} ({blocks_to_scan} blocks)")
             
             self.scan_blocks(self.current_block, to_block)
             self.current_block = to_block + 1
+            total_blocks_scanned += blocks_to_scan
             
-            # Auto-save after each scan
+            # Auto-save after each iteration
             self.save_data()
-        else:
-            print(f"Already caught up to block {latest_block}")
+            
+            # Check if we've reached the latest block
+            if self.current_block > latest_block:
+                print(f"\nCaught up to block {latest_block}")
+                break
+                
+            # Small pause between iterations to avoid overwhelming RPC
+            if self.current_block <= latest_block:
+                print("Pausing before next iteration...")
+                time.sleep(2)
+        
+        if total_blocks_scanned >= max_total_blocks:
+            print(f"\nReached max scan limit of {max_total_blocks} blocks")
+            print(f"Still {latest_block - self.current_block + 1} blocks behind")
         
         self.print_summary()
         return latest_block
+        
 
     def run_continuous(self, blocks_per_scan: int = 1000, sleep_seconds: int = 10):
         """Run continuous monitoring - always scan to the newest block"""
