@@ -41,7 +41,11 @@ class EthereumBlockFetcher:
         
         try:
             with open(file_path, 'r') as f:
-                data = json.load(f)
+                content = f.read().strip()
+                if not content:
+                    print(f"File {file_path} is empty, using defaults")
+                    return self.eth_block_start, [], None
+                data = json.loads(content)
                 print(f"Loaded data keys: {data.keys()}")
                 
                 # Load last processed block
@@ -380,10 +384,26 @@ class EthereumBlockFetcher:
 # GitHub Actions optimized main execution
 if __name__ == "__main__":
     try:
-        # Get RPC URL from environment variable or use default
-        RPC_URL = os.environ.get('RPC_URL', "https://base-mainnet.g.alchemy.com/v2/WZTarDgfomC-hjuFJKIrH")
+        # Get RPC URL from environment variable with better fallback handling
+        RPC_URL = os.environ.get('RPC_URL')
+        if not RPC_URL:
+            # Use the default from your original script if no environment variable
+            RPC_URL = "https://base-mainnet.g.alchemy.com/v2/WZTarDgfomC-hjuFJKIrH"
+            print(f"No RPC_URL environment variable found, using default RPC endpoint")
+        else:
+            print(f"Using RPC_URL from environment variable")
+        
+        print(f"Connecting to RPC: {RPC_URL[:50]}...")  # Show first 50 chars for debugging
         
         fetcher = EthereumBlockFetcher(RPC_URL)
+        
+        # Test connection first
+        try:
+            latest_block = fetcher.w3.eth.get_block('latest')
+            print(f"Successfully connected to RPC. Latest block: {latest_block['number']}")
+        except Exception as e:
+            print(f"Failed to connect to RPC: {e}")
+            exit(1)
         
         # Run once for GitHub Actions (no infinite loop)
         fetcher.run_github_actions(batch_size=499, max_runtime_minutes=20)
