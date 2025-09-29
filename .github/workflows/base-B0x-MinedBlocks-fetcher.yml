@@ -15,6 +15,8 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
     
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -34,65 +36,301 @@ jobs:
         python -m pip install --upgrade pip
         pip install web3
     
-    - name: Create data directory
+    - name: Create mainnetB0x directory
       run: |
-        mkdir -p data
+        mkdir -p mainnetB0x
     
-    - name: Download previous data
-      continue-on-error: true
+    - name: Check for existing data file
       run: |
-        echo "Attempting to download previous data file..."
-        if curl -f -L -o uu_mined_blocks_testnet.json "https://github.com/${{ github.repository }}/releases/latest/download/uu_mined_blocks_testnet.json"; then
-          echo "Downloaded previous data file successfully"
-          ls -la uu_mined_blocks_testnet.json
+        if [ -f "mainnetB0x/uu_mined_blocks_testnet.json" ]; then
+          echo "Found existing data file, copying to working directory"
+          cp mainnetB0x/uu_mined_blocks_testnet.json ./
         else
-          echo "No previous data file found or download failed, starting fresh"
-          echo "This is normal for the first run"
-        fi
-    
-    - name: Set RPC URL
-      run: |
-        # Set a default RPC URL if the secret is not available
-        if [ -z "${{ secrets.RPC_URL }}" ]; then
-          echo "RPC_URL secret not set, will use default in script"
-          echo "RPC_URL_TO_USE=" >> $GITHUB_ENV
-        else
-          echo "Using RPC_URL from secrets"
-          echo "RPC_URL_TO_USE=${{ secrets.RPC_URL }}" >> $GITHUB_ENV
+          echo "No existing data file found in mainnetB0x directory"
         fi
     
     - name: Run Ethereum Block Fetcher
       env:
-        RPC_URL: ${{ env.RPC_URL_TO_USE }}
+        RPC_URL: ${{ secrets.RPC_URL }}
       run: |
         echo "Starting Ethereum Block Fetcher..."
         python ethereum_block_fetcher_github.py
       timeout-minutes: 25
     
-    - name: Upload results as artifacts
+    - name: Move data file to mainnetB0x directory
+      id: move_file
+      run: |
+        if [ -f "uu_mined_blocks_testnet.json" ]; then
+          cp uu_mined_blocks_testnet.json mainnetB0x/
+          echo "file_exists=true" >> $GITHUB_OUTPUT
+          echo "File moved to mainnetB0x/ directory"
+          echo "File size: $(ls -lh mainnetB0x/uu_mined_blocks_testnet.json)"
+          echo "Data preview:"
+          tail -10 mainnetB0x/uu_mined_blocks_testnet.json
+        else
+          echo "file_exists=false" >> $GITHUB_OUTPUT
+          echo "Data file was not created"
+        fi
+    
+    - name: Create additional files in mainnetB0x
+      if: steps.move_file.outputs.file_exists == 'true'
+      run: |
+        # Create a latest.json symlink/copy
+        cp mainnetB0x/uu_mined_blocks_testnet.json mainnetB0x/latest.json
+        
+        # Create README for the mainnetB0x directory
+        cat > mainnetB0x/README.md << 'EOF'
+        # B0x Mining Data - Base Mainnet
+        
+        This directory contains automatically updated mining data for the B0x token on Base mainnet.
+        
+        ## Files
+        
+        - uu_mined_blocks_testnet.json - Main data file with all mining transactions
+        - latest.json - Copy of the main file for easy access
+        - index.html - Web interface for viewing the data
+        
+        ## Direct Access Links
+        
+        - JSON Data: https://raw.githubusercontent.com/${{ github.repository }}/main/mainnetB0x/uu_mined_blocks_testnet.json
+        - Latest Copy: https://raw.githubusercontent.com/${{ github.repository }}/main/mainnetB0x/latest.json
+        
+        ## Data Structure
+        
+        The JSON file contains an object with the following structure:
+        - mined_blocks: Array of arrays containing [block_number, tx_hash, miner_address, amount, epoch_count]
+        - total_blocks: Total number of blocks processed
+        - last_updated: Unix timestamp of last update
+        - latest_block_number: Latest blockchain block processed
+        - contract_address: The smart contract address
+        - mint_topic: The event topic hash
+        - previous_challenge: Last challenge hash
+        
+        Updated automatically every 30 minutes via GitHub Actions.
+        EOF
+        
+        # Create a simple HTML interface
+        cat > mainnetB0x/index.html << 'EOF'
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>B0x Mining Data - Base Mainnet</title>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style>
+                body { 
+                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+                    margin: 0; 
+                    padding: 20px; 
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    min-height: 100vh;
+                }
+                .container { 
+                    max-width: 1000px; 
+                    margin: 0 auto; 
+                    background: white; 
+                    border-radius: 10px; 
+                    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+                    overflow: hidden;
+                }
+                .header {
+                    background: linear-gradient(45deg, #1e3c72, #2a5298);
+                    color: white;
+                    padding: 30px;
+                    text-align: center;
+                }
+                .stats { 
+                    display: grid; 
+                    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
+                    gap: 20px; 
+                    padding: 20px; 
+                    background: #f8f9fa;
+                }
+                .stat-card {
+                    background: white;
+                    padding: 20px;
+                    border-radius: 8px;
+                    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                    text-align: center;
+                }
+                .stat-value {
+                    font-size: 24px;
+                    font-weight: bold;
+                    color: #2a5298;
+                }
+                .stat-label {
+                    color: #666;
+                    margin-top: 5px;
+                }
+                .links { 
+                    padding: 20px; 
+                    background: #e3f2fd; 
+                }
+                .link-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                    gap: 15px;
+                }
+                .link-card {
+                    background: white;
+                    padding: 15px;
+                    border-radius: 6px;
+                    border-left: 4px solid #2a5298;
+                }
+                .link-card a {
+                    color: #1565c0;
+                    text-decoration: none;
+                    font-weight: 500;
+                }
+                .link-card a:hover {
+                    text-decoration: underline;
+                }
+                .recent-blocks {
+                    padding: 20px;
+                }
+                .block-item {
+                    background: #f5f5f5;
+                    padding: 10px;
+                    margin: 5px 0;
+                    border-radius: 4px;
+                    font-family: monospace;
+                    font-size: 12px;
+                }
+                .loading {
+                    text-align: center;
+                    padding: 20px;
+                    color: #666;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>🚀 B0x Mining Data</h1>
+                    <p>Base Mainnet • Real-time Mining Statistics</p>
+                </div>
+                
+                <div class="stats" id="stats-grid">
+                    <div class="loading">Loading statistics...</div>
+                </div>
+                
+                <div class="links">
+                    <h3>📡 Direct Data Access</h3>
+                    <div class="link-grid">
+                        <div class="link-card">
+                            <strong>Main Data File</strong><br>
+                            <a href="uu_mined_blocks_testnet.json" target="_blank">uu_mined_blocks_testnet.json</a>
+                        </div>
+                        <div class="link-card">
+                            <strong>Latest Copy</strong><br>
+                            <a href="latest.json" target="_blank">latest.json</a>
+                        </div>
+                        <div class="link-card">
+                            <strong>GitHub Raw</strong><br>
+                            <a href="https://raw.githubusercontent.com/${{ github.repository }}/main/mainnetB0x/uu_mined_blocks_testnet.json" target="_blank">Raw JSON</a>
+                        </div>
+                        <div class="link-card">
+                            <strong>Contract</strong><br>
+                            <a href="#" id="contract-link" target="_blank">View on BaseScan</a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="recent-blocks">
+                    <h3>📊 Recent Mining Activity</h3>
+                    <div id="recent-blocks-content" class="loading">Loading recent blocks...</div>
+                </div>
+            </div>
+            
+            <script>
+                async function loadData() {
+                    try {
+                        const response = await fetch('latest.json');
+                        const data = await response.json();
+                        
+                        // Update stats
+                        const statsGrid = document.getElementById('stats-grid');
+                        statsGrid.innerHTML = `
+                            <div class="stat-card">
+                                <div class="stat-value">${data.total_blocks.toLocaleString()}</div>
+                                <div class="stat-label">Total Blocks Mined</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value">${data.latest_block_number.toLocaleString()}</div>
+                                <div class="stat-label">Latest Block Processed</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value">${new Date(data.last_updated * 1000).toLocaleDateString()}</div>
+                                <div class="stat-label">Last Updated</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value">${new Date(data.last_updated * 1000).toLocaleTimeString()}</div>
+                                <div class="stat-label">Update Time</div>
+                            </div>
+                        `;
+                        
+                        // Update contract link
+                        document.getElementById('contract-link').href = `https://basescan.org/address/${data.contract_address}`;
+                        
+                        // Show recent blocks
+                        const recentBlocks = data.mined_blocks.slice(0, 10);
+                        const recentBlocksContent = document.getElementById('recent-blocks-content');
+                        recentBlocksContent.innerHTML = recentBlocks.map(block => `
+                            <div class="block-item">
+                                Block: ${block[0]} | Miner: ${block[2]} | Amount: ${block[3]} | Epoch: ${block[4]}
+                            </div>
+                        `).join('');
+                        
+                    } catch (error) {
+                        console.error('Error loading data:', error);
+                        document.getElementById('stats-grid').innerHTML = '<div class="loading">Error loading data</div>';
+                        document.getElementById('recent-blocks-content').innerHTML = '<div class="loading">Error loading recent blocks</div>';
+                    }
+                }
+                
+                loadData();
+                
+                // Auto-refresh every 5 minutes
+                setInterval(loadData, 5 * 60 * 1000);
+            </script>
+        </body>
+        </html>
+        EOF
+    
+    - name: Configure Git
+      if: steps.move_file.outputs.file_exists == 'true'
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action Bot"
+    
+    - name: Commit and push data files
+      if: steps.move_file.outputs.file_exists == 'true'
+      run: |
+        git add mainnetB0x/
+        
+        # Check if there are changes to commit
+        if git diff --staged --quiet; then
+          echo "No changes to commit"
+        else
+          # Get current timestamp and block info for commit message
+          TIMESTAMP=$(date +'%Y-%m-%d %H:%M:%S UTC')
+          TOTAL_BLOCKS=$(python -c "import json; data=json.load(open('mainnetB0x/uu_mined_blocks_testnet.json')); print(data.get('total_blocks', 0))")
+          LATEST_BLOCK=$(python -c "import json; data=json.load(open('mainnetB0x/uu_mined_blocks_testnet.json')); print(data.get('latest_block_number', 'unknown'))")
+          
+          git commit -m "🔄 Update B0x mining data: ${TOTAL_BLOCKS} blocks processed (latest: ${LATEST_BLOCK}) - ${TIMESTAMP}"
+          git push
+          
+          echo "✅ Data files committed and pushed successfully!"
+          echo "📊 Total blocks processed: ${TOTAL_BLOCKS}"
+          echo "🔗 Access your data at:"
+          echo "   📄 JSON: https://raw.githubusercontent.com/${{ github.repository }}/main/mainnetB0x/uu_mined_blocks_testnet.json"
+          echo "   🌐 Web:  https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/mainnetB0x/"
+        fi
+    
+    - name: Upload artifacts (backup)
       uses: actions/upload-artifact@v4
-      if: always()  # Upload even if there were errors
+      if: always()
       with:
-        name: mined-blocks-data-${{ github.run_number }}
-        path: |
-          uu_mined_blocks_testnet.json
-        retention-days: 30
-    
-    - name: Create Release with Data
-      if: success() && hashFiles('uu_mined_blocks_testnet.json') != ''
-      uses: softprops/action-gh-release@v1
-      with:
-        tag_name: data-${{ github.run_number }}
-        name: "Block Data Update ${{ github.run_number }}"
-        files: |
-          uu_mined_blocks_testnet.json
-        body: |
-          Automated block data update
-          - Run: ${{ github.run_number }}
-          - Timestamp: ${{ steps.date.outputs.date }}
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    
-    - name: Get current date
-      id: date
-      run: echo "date=$(date +'%Y-%m-%d %H:%M:%S')" >> $GITHUB_OUTPUT
+        name: mainnetB0x-data-${{ github.run_number }}
+        path: mainnetB0x/
+        retention-days: 7
