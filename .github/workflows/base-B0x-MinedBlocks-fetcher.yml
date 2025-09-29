@@ -330,7 +330,7 @@ jobs:
                         uniswapStats.innerHTML = `
                             <div class="stat-card">
                                 <div class="stat-value">${data.metadata.total_valid_positions}</div>
-                                <div class="stat-label">Valid Positions</div>
+                                <div class="stat-label">Valid Staking NFT Positions</div>
                             </div>
                             <div class="stat-card">
                                 <div class="stat-value">${data.metadata.current_block.toLocaleString()}</div>
@@ -338,7 +338,7 @@ jobs:
                             </div>
                             <div class="stat-card">
                                 <div class="stat-value">${data.metadata.total_nft_owners}</div>
-                                <div class="stat-label">NFT Owners</div>
+                                <div class="stat-label">Valid Staking NFT Owners</div>
                             </div>
                             <div class="stat-card">
                                 <div class="stat-value">${new Date(data.metadata.last_updated).toLocaleString()}</div>
