@@ -101,7 +101,7 @@ class EthereumBlockFetcher:
             List of log entries
         """
         try:
-            logs = self.w3.eth.getLogs({
+            logs = self.w3.eth.get_logs({
                 'fromBlock': start_block,
                 'toBlock': end_block,
                 'address': self.bwork_contract_address,
@@ -196,7 +196,7 @@ class EthereumBlockFetcher:
             
             # Load the last processed block
             start_block = self.load_last_processed_block()
-            current_block = self.w3.eth.getBlock('latest')['number']
+            current_block = self.w3.eth.get_block('latest')['number']
             
             print(f"Starting from block: {start_block}")
             print(f"Current block: {current_block}")
@@ -247,6 +247,135 @@ class EthereumBlockFetcher:
             # Save whatever progress we made
             if hasattr(self, 'mined_blocks') and len(self.mined_blocks) > 0:
                 self.save_mined_blocks_to_file(start_block)
+
+    def run_once(self, batch_size: int = 499):
+        """
+        Run the fetcher once (for compatibility with original script)
+        
+        Args:
+            batch_size: Number of blocks to process in each batch
+        """
+        try:
+            print(f"\n[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Starting block fetch...")
+            
+            # Load the last processed block
+            start_block = self.load_last_processed_block()
+            current_block = self.w3.eth.get_block('latest')['number']
+            
+            print(f"Starting from block: {start_block}")
+            print(f"Current block: {current_block}")
+            
+            if start_block > current_block:
+                print("Already up to date!")
+                return
+            
+            # Process blocks in batches with loop counter for progress saving
+            current_start = start_block
+            loop_counter = 0
+            
+            current_end = start_block
+            while current_start <= current_block:
+                time.sleep(1.6)
+                current_end = min(current_start + batch_size - 1, current_block)
+                
+                print(f"Processing blocks {current_start} to {current_end} (Loop {loop_counter + 1})")
+                
+                # Fetch logs for this batch
+                logs = self.fetch_logs(current_start, current_end)
+                
+                # Process each transaction
+                for transaction in logs:
+                    self.process_transaction(transaction)
+                
+                # Save progress every 10 loops
+                loop_counter += 1
+                if loop_counter % 50 == 0:
+                    print(f"Saving progress after %50 loops pausing 25 seconds")
+                    self.save_mined_blocks_to_file(current_end)
+                    time.sleep(25)
+                else:
+                    # Always save the last processed block for resumption
+                    print(f"Saving progress after {loop_counter} loops...")
+                    self.save_mined_blocks_to_file(current_end)
+                
+                # Move to next batch
+                current_start = current_end + 1
+            
+            # Save final results (in case total loops wasn't a multiple of 10)
+            print("Saving final results...")
+            self.save_mined_blocks_to_file(current_end)
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Processing complete!")
+            
+        except Exception as e:
+            print(f"Error during fetch: {e}")
+    
+    def scheduler_loop(self, interval_minutes: int = 3, batch_size: int = 499):
+        """
+        Main scheduler loop that runs every interval_minutes
+        
+        Args:
+            interval_minutes: How often to run in minutes
+            batch_size: Number of blocks to process in each batch
+        """
+        interval_seconds = interval_minutes * 60
+        
+        while self.running:
+            # Run the fetcher
+            self.run_once(batch_size)
+            
+            # Wait for the next interval or until stopped
+            for _ in range(interval_seconds):
+                if not self.running:
+                    break
+                time.sleep(1)
+    
+    def start_scheduler(self, interval_minutes: int = 3, batch_size: int = 499):
+        """
+        Start the scheduler in a separate thread
+        
+        Args:
+            interval_minutes: How often to run in minutes (default: 3)
+            batch_size: Number of blocks to process in each batch
+        """
+        if self.running:
+            print("Scheduler is already running!")
+            return
+        
+        self.running = True
+        self.scheduler_thread = threading.Thread(
+            target=self.scheduler_loop,
+            args=(interval_minutes, batch_size),
+            daemon=True
+        )
+        self.scheduler_thread.start()
+        
+        print(f"Started scheduler! Will run every {interval_minutes} minutes.")
+        print("Press Ctrl+C to stop the scheduler.")
+    
+    def stop_scheduler(self):
+        """Stop the scheduler"""
+        self.running = False
+        if self.scheduler_thread:
+            self.scheduler_thread.join(timeout=5)
+        print("Scheduler stopped.")
+    
+    def run_continuously(self, interval_minutes: int = 3, batch_size: int = 499):
+        """
+        Run the fetcher continuously every interval_minutes
+        
+        Args:
+            interval_minutes: How often to run in minutes (default: 3)
+            batch_size: Number of blocks to process in each batch
+        """
+        self.start_scheduler(interval_minutes, batch_size)
+        
+        try:
+            # Keep the main thread alive
+            while self.running:
+                time.sleep(1)
+        except KeyboardInterrupt:
+            print("\nReceived interrupt signal...")
+            self.stop_scheduler()
 
 # GitHub Actions optimized main execution
 if __name__ == "__main__":
