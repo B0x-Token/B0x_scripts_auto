@@ -73,30 +73,6 @@ jobs:
           echo "Uniswap data file was not created"
         fi
     
-    - name: Update mainnetB0x README for Uniswap data
-      if: steps.move_uniswap_file.outputs.file_exists == 'true'
-      run: |
-        # Update the existing README to include Uniswap data info
-        if [ -f "mainnetB0x/README.md" ]; then
-          # Check if Uniswap section already exists
-          if ! grep -q "uniswap_v4_data_testnet.json" mainnetB0x/README.md; then
-            echo "" >> mainnetB0x/README.md
-            echo "## Uniswap V4 Data" >> mainnetB0x/README.md
-            echo "" >> mainnetB0x/README.md
-            echo "- \`uniswap_v4_data_testnet.json\` - Uniswap V4 position monitoring data" >> mainnetB0x/README.md
-            echo "- **Uniswap Data**: [uniswap_v4_data_testnet.json](https://raw.githubusercontent.com/${{ github.repository }}/main/mainnetB0x/uniswap_v4_data_testnet.json)" >> mainnetB0x/README.md
-            echo "" >> mainnetB0x/README.md
-            echo "### Uniswap Data Structure" >> mainnetB0x/README.md
-            echo "" >> mainnetB0x/README.md
-            echo "The JSON file contains metadata about Uniswap V4 positions including:" >> mainnetB0x/README.md
-            echo "- metadata: Contains last_updated, current_block, start_block, target_pool_key, totals" >> mainnetB0x/README.md
-            echo "- valid_positions: Array of positions matching the target pool" >> mainnetB0x/README.md
-            echo "- nft_owners: Mapping of token IDs to owner addresses" >> mainnetB0x/README.md
-            echo "" >> mainnetB0x/README.md
-            echo "Updated automatically every 30 minutes via GitHub Actions." >> mainnetB0x/README.md
-          fi
-        fi
-    
     - name: Update HTML interface for Uniswap data
       if: steps.move_uniswap_file.outputs.file_exists == 'true'
       run: |
@@ -112,19 +88,16 @@ import re
 with open('mainnetB0x/index.html', 'r') as f:
     content = f.read()
 
-# Define the new link card HTML
-new_card = '''                        <div class="link-card">
-                            <strong>Uniswap V4 Data</strong><br>
-                            <a href="uniswap_v4_data_testnet.json" target="_blank">uniswap_v4_data_testnet.json</a>
-                        </div>'''
+# Define the new link card HTML (single line to avoid YAML issues)
+new_card = '<div class="link-card"><strong>Uniswap V4 Data</strong><br><a href="uniswap_v4_data_testnet.json" target="_blank">uniswap_v4_data_testnet.json</a></div>'
 
-# Find the last link-card and insert after it
-pattern = r'(.*<div class="link-card">.*?</div>)(.*</div>\s*</div>)'
+# Find the pattern to insert after
+pattern = r'(<div class="link-card">.*?</div>)(\s*</div>\s*</div>)'
 match = re.search(pattern, content, re.DOTALL)
 
 if match:
     # Insert the new card before the closing divs
-    new_content = match.group(1) + '\n' + new_card + '\n' + match.group(2)
+    new_content = content.replace(match.group(0), match.group(1) + '\n                        ' + new_card + '\n' + match.group(2))
     
     # Write back to file
     with open('mainnetB0x/index.html', 'w') as f:
@@ -136,7 +109,7 @@ else:
 PYTHON_EOF
           fi
         fi
-    
+        
     - name: Configure Git
       if: steps.move_uniswap_file.outputs.file_exists == 'true'
       run: |
