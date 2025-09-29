@@ -50,7 +50,7 @@ jobs:
           echo "No existing Uniswap data file found in mainnetB0x directory"
         fi
     
-    - name: Run Uniswap V4 Monitor
+    - name: Run 4Uniswap V4 Monitor
       env:
         RPC_URL: ${{ secrets.RPC_URL }}
       run: |
