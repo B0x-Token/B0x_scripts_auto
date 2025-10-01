@@ -33,10 +33,9 @@ def save_data(timestamps, blocks, prices):
 
 def load_data():
     """Load the arrays from JSON file"""
-    # Check multiple possible locations for GitHub Actions
     possible_paths = [
-        f"mainnetB0x/{LOCAL_DATA_FILE}",  # GitHub repo structure
-        LOCAL_DATA_FILE                    # Current directory
+        f"mainnetB0x/{LOCAL_DATA_FILE}",
+        LOCAL_DATA_FILE
     ]
     
     file_path = None
@@ -76,7 +75,7 @@ def load_data():
         return [], [], []
 
 def is_target_time(timestamp, tolerance_minutes=30):
-    """Check if a timestamp is close to a target time (midnight, 6am, noon, 6pm)"""
+    """Check if a timestamp is close to a target time"""
     dt = datetime.fromtimestamp(timestamp, tz=timezone.utc)
     hour = dt.hour
     minute = dt.minute
@@ -91,7 +90,7 @@ def is_target_time(timestamp, tolerance_minutes=30):
     return False
 
 def get_exact_target_timestamp(timestamp):
-    """Get the exact target timestamp (00:00, 06:00, 12:00, 18:00) that this timestamp is closest to"""
+    """Get the exact target timestamp this timestamp is closest to"""
     dt = datetime.fromtimestamp(timestamp, tz=timezone.utc)
     date_only = dt.replace(hour=0, minute=0, second=0, microsecond=0)
     
@@ -115,7 +114,7 @@ def get_exact_target_timestamp(timestamp):
     return closest_target
 
 def comprehensive_data_cleanup_with_dedup(timestamps, blocks, prices):
-    """Cleanup with deduplication: For each 6-hour target time, keep only the closest data point"""
+    """Cleanup with deduplication"""
     if not timestamps:
         print("No data to clean")
         return timestamps, blocks, prices
@@ -210,7 +209,6 @@ def get_storage_with_retry(address, slot, block, retries=5, base_delay=6):
             print(f"Retry {attempt+1}/{retries} failed: {e}")
             attempt += 1
             if attempt < retries:
-                # Exponential backoff: 6s, 12s, 24s, 48s, 96s
                 retry_delay = base_delay * (2 ** attempt)
                 print(f"Waiting {retry_delay} seconds before retry...")
                 time.sleep(retry_delay)
@@ -262,9 +260,9 @@ def getSlot0(block):
 def get_current_block_and_timestamp():
     """Get the current block number and timestamp"""
     try:
-        time.sleep(3)  # 3 second delay before RPC call
+        time.sleep(3)
         current_block = w3.eth.block_number
-        time.sleep(3)  # 3 second delay before next RPC call
+        time.sleep(3)
         block_data = w3.eth.get_block(current_block)
         current_timestamp = block_data["timestamp"]
         return current_block, current_timestamp
@@ -278,7 +276,7 @@ def estimate_block_from_timestamp(target_timestamp, current_block, current_times
         blocks_24h_ago_estimate = int((24 * 60 * 60) / 2)
         sample_block_24h_ago = max(1, current_block - blocks_24h_ago_estimate)
         
-        time.sleep(3)  # 3 second delay before RPC call
+        time.sleep(3)
         sample_block_data = w3.eth.get_block(sample_block_24h_ago)
         sample_timestamp_24h_ago = sample_block_data["timestamp"]
         
@@ -376,7 +374,6 @@ def collect_historical_data(timestamps, blocks, prices, target_days=30, max_coll
         print("No missing historical data points found")
         return timestamps, blocks, prices
     
-    # Limit the number of data points to collect in this run
     points_to_collect = min(len(all_missing_timestamps), max_collect)
     missing_timestamps = all_missing_timestamps[:points_to_collect]
     
@@ -388,7 +385,6 @@ def collect_historical_data(timestamps, blocks, prices, target_days=30, max_coll
     collected_count = 0
     
     for i, target_timestamp in enumerate(missing_timestamps):
-        # Exit if we've already collected max_collect successfully
         if collected_count >= max_collect:
             print(f"\nReached maximum collection limit of {max_collect} data points")
             break
@@ -396,7 +392,7 @@ def collect_historical_data(timestamps, blocks, prices, target_days=30, max_coll
         try:
             estimated_block = estimate_block_from_timestamp(target_timestamp, current_block, current_timestamp)
             
-            time.sleep(3)  # 3 second delay before RPC call
+            time.sleep(3)
             block_data = w3.eth.get_block(estimated_block)
             actual_timestamp = block_data["timestamp"]
             
@@ -407,7 +403,7 @@ def collect_historical_data(timestamps, blocks, prices, target_days=30, max_coll
                 else:
                     estimated_block -= int((actual_timestamp - target_timestamp) / 2)
                 
-                time.sleep(3)  # 3 second delay before RPC call
+                time.sleep(3)
                 block_data = w3.eth.get_block(estimated_block)
                 actual_timestamp = block_data["timestamp"]
                 attempts += 1
@@ -441,11 +437,9 @@ def collect_historical_data(timestamps, blocks, prices, target_days=30, max_coll
                     print(f"  Progress saved: {collected_count} collected, {skipped_count} skipped")
                 
             except ValueError as ve:
-                # Pool not initialized at this block, skip it
                 print(f"  SKIPPED: {ve}")
                 skipped_count += 1
             
-            # Additional delay between iterations
             time.sleep(1)
             
         except Exception as e:
@@ -458,7 +452,6 @@ def collect_historical_data(timestamps, blocks, prices, target_days=30, max_coll
     print(f"  Successfully collected: {collected_count} data points")
     print(f"  Skipped: {skipped_count} data points (pool not initialized)")
     
-    # Check if there are still more missing points
     remaining_missing = len(get_missing_timestamps(timestamps, current_timestamp, target_days))
     if remaining_missing > 0:
         print(f"  Still remaining: {remaining_missing} data points to collect in future runs")
@@ -466,116 +459,6 @@ def collect_historical_data(timestamps, blocks, prices, target_days=30, max_coll
         print(f"  ✓ All historical data collected!")
     print(f"{'='*60}")
     
-    return timestamps, blocks, prices
-                
-                time.sleep(3)  # 3 second delay before RPC call
-                block_data = w3.eth.get_block(estimated_block)
-                actual_timestamp = block_data["timestamp"]
-                attempts += 1
-            
-            target_dt = datetime.fromtimestamp(target_timestamp, tz=timezone.utc)
-            actual_dt = datetime.fromtimestamp(actual_timestamp, tz=timezone.utc)
-            
-            print(f"\nAttempting {i+1}/{points_to_collect} (Collected so far: {collected_count}/{max_collect})")
-            print(f"  Block {estimated_block}")
-            print(f"  Target: {target_dt.strftime('%Y-%m-%d %H:%M:%S UTC')}")
-            print(f"  Actual: {actual_dt.strftime('%Y-%m-%d %H:%M:%S UTC')}")
-            
-            try:
-                price = getSlot0(estimated_block)
-                
-                insert_pos = 0
-                for j, existing_ts in enumerate(timestamps):
-                    if actual_timestamp > existing_ts:
-                        insert_pos = j + 1
-                    else:
-                        break
-                
-                timestamps.insert(insert_pos, actual_timestamp)
-                blocks.insert(insert_pos, estimated_block)
-                prices.insert(insert_pos, price)
-                collected_count += 1
-                print(f"  ✓ Successfully collected (total: {collected_count})")
-                
-                if (collected_count) % 10 == 0:
-                    save_data(timestamps, blocks, prices)
-                    print(f"  Progress saved: {collected_count} collected, {skipped_count} skipped")
-                
-            except ValueError as ve:
-                # Pool not initialized at this block, skip it
-                print(f"  SKIPPED: {ve}")
-                skipped_count += 1
-            
-            # Additional delay between iterations
-            time.sleep(1)
-            
-        except Exception as e:
-            print(f"Error collecting historical data point {i+1}: {e}")
-            skipped_count += 1
-            continue
-    
-    print(f"\n{'='*60}")
-    print(f"Historical data collection complete for this run!")
-    print(f"  Successfully collected: {collected_count} data points")
-    print(f"  Skipped: {skipped_count} data points (pool not initialized)")
-    
-    # Check if there are still more missing points
-    remaining_missing = len(get_missing_timestamps(timestamps, current_timestamp, target_days))
-    if remaining_missing > 0:
-        print(f"  Still remaining: {remaining_missing} data points to collect in future runs")
-    else:
-        print(f"  ✓ All historical data collected!")
-    print(f"{'='*60}")
-    
-    return timestamps, blocks, prices
-                
-                time.sleep(3)  # 3 second delay before RPC call
-                block_data = w3.eth.get_block(estimated_block)
-                actual_timestamp = block_data["timestamp"]
-                attempts += 1
-            
-            target_dt = datetime.fromtimestamp(target_timestamp, tz=timezone.utc)
-            actual_dt = datetime.fromtimestamp(actual_timestamp, tz=timezone.utc)
-            
-            print(f"Collecting {i+1}/{len(missing_timestamps)}: Block {estimated_block}")
-            print(f"  Target: {target_dt.strftime('%Y-%m-%d %H:%M:%S UTC')}")
-            print(f"  Actual: {actual_dt.strftime('%Y-%m-%d %H:%M:%S UTC')}")
-            
-            try:
-                price = getSlot0(estimated_block)
-                
-                insert_pos = 0
-                for j, existing_ts in enumerate(timestamps):
-                    if actual_timestamp > existing_ts:
-                        insert_pos = j + 1
-                    else:
-                        break
-                
-                timestamps.insert(insert_pos, actual_timestamp)
-                blocks.insert(insert_pos, estimated_block)
-                prices.insert(insert_pos, price)
-                collected_count += 1
-                
-                if (collected_count) % 10 == 0:
-                    save_data(timestamps, blocks, prices)
-                    print(f"Progress saved: {collected_count} collected, {skipped_count} skipped")
-                
-            except ValueError as ve:
-                # Pool not initialized at this block, skip it
-                print(f"  SKIPPED: {ve}")
-                skipped_count += 1
-            
-            # Additional delay between iterations
-            time.sleep(1)
-            
-        except Exception as e:
-            print(f"Error collecting historical data point {i+1}: {e}")
-            skipped_count += 1
-            continue
-    
-    print(f"Historical data collection complete!")
-    print(f"  Collected: {collected_count} data points")
-    print(f"  Skipped: {skipped_count} data points (pool not initialized)")
     return timestamps, blocks, prices
 
 def enforce_30_day_limit(timestamps, blocks, prices):
@@ -633,21 +516,17 @@ def main():
     print("Base B0x Price Monitor - GitHub Actions Edition")
     print("="*60)
     
-    # Load existing data
     ArrayOfTimestamps, ArrayOfBlocksSearched, ArrayOfActualPrices = load_data()
     print("Data loaded")
     
-    # Enforce 30-day limit
     ArrayOfTimestamps, ArrayOfBlocksSearched, ArrayOfActualPrices = enforce_30_day_limit(
         ArrayOfTimestamps, ArrayOfBlocksSearched, ArrayOfActualPrices
     )
     
-    # Cleanup with deduplication
     ArrayOfTimestamps, ArrayOfBlocksSearched, ArrayOfActualPrices = comprehensive_data_cleanup_with_dedup(
         ArrayOfTimestamps, ArrayOfBlocksSearched, ArrayOfActualPrices
     )
     
-    # Get current block and timestamp
     current_block, current_timestamp = get_current_block_and_timestamp()
     if current_block is None:
         print("Failed to get current block info, exiting")
@@ -657,18 +536,15 @@ def main():
     current_dt = datetime.fromtimestamp(current_timestamp, tz=timezone.utc)
     print(f"Current time: {current_dt.strftime('%Y-%m-%d %H:%M:%S UTC')}")
     
-    # Collect missing historical data
     print("\nChecking for missing historical data...")
     ArrayOfTimestamps, ArrayOfBlocksSearched, ArrayOfActualPrices = collect_historical_data(
         ArrayOfTimestamps, ArrayOfBlocksSearched, ArrayOfActualPrices, target_days=30
     )
     
-    # Final 30-day limit enforcement
     ArrayOfTimestamps, ArrayOfBlocksSearched, ArrayOfActualPrices = enforce_30_day_limit(
         ArrayOfTimestamps, ArrayOfBlocksSearched, ArrayOfActualPrices
     )
     
-    # Get and update current price
     print("\nGetting current price...")
     try:
         current_price = getSlot0(current_block)
@@ -682,10 +558,8 @@ def main():
     except Exception as e:
         print(f"Error getting current price: {e}")
     
-    # Save the final data
     save_data(ArrayOfTimestamps, ArrayOfBlocksSearched, ArrayOfActualPrices)
     
-    # Summary
     print("\n" + "="*60)
     print("SUMMARY")
     print("="*60)
