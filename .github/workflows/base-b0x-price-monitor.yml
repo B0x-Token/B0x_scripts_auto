@@ -43,9 +43,9 @@ jobs:
     
     - name: Check for existing price data file
       run: |
-        if [ -f "mainnetB0x/y2price_data_bwork.json" ]; then
+        if [ -f "mainnetB0x/price_data_bwork.json" ]; then
           echo "Found existing price data file, copying to working directory"
-          cp mainnetB0x/y2price_data_bwork.json ./
+          cp mainnetB0x/price_data_bwork.json ./
         else
           echo "No existing price data file found in mainnetB0x directory"
         fi
@@ -59,13 +59,13 @@ jobs:
     - name: Move price data file to mainnetB0x directory
       id: move_price_file
       run: |
-        if [ -f "y2price_data_bwork.json" ]; then
-          cp y2price_data_bwork.json mainnetB0x/
+        if [ -f "price_data_bwork.json" ]; then
+          cp price_data_bwork.json mainnetB0x/
           echo "file_exists=true" >> $GITHUB_OUTPUT
           echo "Price data file moved to mainnetB0x/ directory"
-          echo "File size: $(ls -lh mainnetB0x/y2price_data_bwork.json)"
+          echo "File size: $(ls -lh mainnetB0x/price_data_bwork.json)"
           echo "Data preview:"
-          tail -10 mainnetB0x/y2price_data_bwork.json
+          tail -10 mainnetB0x/price_data_bwork.json
         else
           echo "file_exists=false" >> $GITHUB_OUTPUT
           echo "Price data file was not created"
@@ -86,7 +86,7 @@ jobs:
       if: steps.move_price_file.outputs.file_exists == 'true'
       run: |
         # Only add price-specific files
-        git add mainnetB0x/y2price_data_bwork.json
+        git add mainnetB0x/price_data_bwork.json
         
         # Check if there are changes to commit
         if git diff --staged --quiet; then
@@ -100,8 +100,8 @@ jobs:
           
           # Get current timestamp and price info for commit message
           TIMESTAMP=$(date +'%Y-%m-%d %H:%M:%S UTC')
-          DATA_POINTS=$(python -c "import json; data=json.load(open('mainnetB0x/y2price_data_bwork.json')); print(len(data.get('timestamps', [])))" 2>/dev/null || echo "0")
-          LAST_PRICE=$(python -c "import json; data=json.load(open('mainnetB0x/y2price_data_bwork.json')); prices=data.get('prices', []); print(f'{prices[-1]:.6f}' if prices else 'N/A')" 2>/dev/null || echo "N/A")
+          DATA_POINTS=$(python -c "import json; data=json.load(open('mainnetB0x/price_data_bwork.json')); print(len(data.get('timestamps', [])))" 2>/dev/null || echo "0")
+          LAST_PRICE=$(python -c "import json; data=json.load(open('mainnetB0x/price_data_bwork.json')); prices=data.get('prices', []); print(f'{prices[-1]:.6f}' if prices else 'N/A')" 2>/dev/null || echo "N/A")
           
           if git commit -m "Update Base B0x price data: ${DATA_POINTS} data points, last price: \$${LAST_PRICE} - ${TIMESTAMP}"; then
             # Try to push
@@ -110,7 +110,7 @@ jobs:
               echo "Data points: ${DATA_POINTS}"
               echo "Last price: \$${LAST_PRICE}"
               echo "Access your price data at:"
-              echo "   JSON: https://raw.githubusercontent.com/${{ github.repository }}/main/mainnetB0x/y2price_data_bwork.json"
+              echo "   JSON: https://raw.githubusercontent.com/${{ github.repository }}/main/mainnetB0x/price_data_bwork.json"
               break
             else
               echo "Push failed on attempt $attempt - another workflow may have pushed first"
@@ -137,5 +137,5 @@ jobs:
       if: always()
       with:
         name: base-b0x-price-data-${{ github.run_number }}
-        path: mainnetB0x/y2price_data_bwork.json
+        path: mainnetB0x/price_data_bwork.json
         retention-days: 7
