@@ -369,6 +369,9 @@ def collect_historical_data(timestamps, blocks, prices, target_days=30, max_coll
     if current_block is None:
         return timestamps, blocks, prices
     
+    # Hardcoded timestamp - data is only trustworthy from this point forward
+    trustworthy_data_start = 1759276801
+    
     all_missing_timestamps = get_missing_timestamps(timestamps, current_timestamp, target_days)
     
     if not all_missing_timestamps:
@@ -418,7 +421,12 @@ def collect_historical_data(timestamps, blocks, prices, target_days=30, max_coll
             print(f"  Actual: {actual_dt.strftime('%Y-%m-%d %H:%M:%S UTC')}")
             
             try:
-                price = getSlot0(estimated_block)
+                # Check if timestamp is before trustworthy data period
+                if actual_timestamp < trustworthy_data_start:
+                    price = 0
+                    print(f"  ⚠ Before trustworthy data period - setting price to 0")
+                else:
+                    price = getSlot0(estimated_block)
                 
                 insert_pos = 0
                 for j, existing_ts in enumerate(timestamps):
