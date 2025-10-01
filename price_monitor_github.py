@@ -423,7 +423,7 @@ def collect_historical_data(timestamps, blocks, prices, target_days=30, max_coll
             try:
                 # Check if timestamp is before trustworthy data period
                 if actual_timestamp < trustworthy_data_start:
-                    price = 0.077777777777
+                    price = 0.0077777777777
                     print(f"  ⚠ Before trustworthy data period - setting price to 0")
                 else:
                     price = getSlot0(estimated_block)
