@@ -9,7 +9,7 @@ w3 = Web3(Web3.HTTPProvider(RPC_URL))
 Q192 = 2 ** 192
 
 # File to store the data (GitHub Actions compatible)
-LOCAL_DATA_FILE = "y2price_data_bwork.json"
+LOCAL_DATA_FILE = "price_data_bwork.json"
 MAX_DATA_POINTS = 4 * 30 + 1  # 30 days worth of 4 daily intervals + 1 Current Price
 
 # Define the target times for data collection (in UTC)
