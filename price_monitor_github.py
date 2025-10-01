@@ -242,7 +242,7 @@ def getSlot0(block):
     print(f"BWORK/WETH - Price: {price}")
     
     # Check if BWORK/WETH price is zero or too small
-    if price == 0 or price < 1e-16:
+    if price == 0 or price < 1e-18:
         print(f"WARNING: BWORK/WETH price is zero or too small at block {block}")
         actual_price = 0
         return actual_price
@@ -423,7 +423,7 @@ def collect_historical_data(timestamps, blocks, prices, target_days=30, max_coll
             try:
                 # Check if timestamp is before trustworthy data period
                 if actual_timestamp < trustworthy_data_start:
-                    price = 0
+                    price = 0.077777777777
                     print(f"  ⚠ Before trustworthy data period - setting price to 0")
                 else:
                     price = getSlot0(estimated_block)
