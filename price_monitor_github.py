@@ -242,9 +242,11 @@ def getSlot0(block):
     print(f"BWORK/WETH - Price: {price}")
     
     # Check if BWORK/WETH price is zero or too small
-    if price == 0 or price < 1e-18:
+    if price == 0 or price < 1e-16:
         print(f"WARNING: BWORK/WETH price is zero or too small at block {block}")
-        raise ValueError(f"BWORK/WETH pool not initialized at block {block}")
+        actual_price = 0
+        return actual_price;
+    else
     
     # WETH/USD POOL
     pool_slot = '0xe570f6e770bf85faa3d1dbee2fa168b56036a048a7939edbcd02d7ebddf3f948'
