@@ -56,11 +56,11 @@ class UniswapV4Monitor:
 
         # Target pool key
         self.target_pool_key = PoolKey(
-            currency0="0x30456A1da01117Ab06044665854BCCd29640585d",
+            currency0="0xa9520FC8c54691af586544aD13Db954AfC345cd4",
             currency1="0xc4D4FD4F4459730d176844c170F2bB323c87Eb3B",
             fee=8388608,
             tickSpacing=60,
-            hooks="0xA54CbcF7449421E5842C483CC30d992ced301000"
+            hooks="0x983dD6eF6A9360331ba80Ed6322ea47fEb9AD000"
         )
         
         # Storage
