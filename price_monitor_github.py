@@ -235,7 +235,7 @@ def getSlot0(block):
     pool_manager = "0x498581fF718922c3f8e6A244956aF099B2652b2b"
     
     # BWORK/WETH POOL
-    pool_slot = '0x22248320df202cdd197bde01853e465489bc8fc662624a6f91b277813ba0c0da'
+    pool_slot = '0x8b98d84ee524c01394788adc470ed3043045813675ee29e75aad64385aeb6b15'
     packed = get_storage_with_retry(pool_manager, pool_slot, block)
     sqrtPriceX96, tick, protocolFee, lpFee = unpack_slot0(packed)
     price = sqrtPriceX96_to_price(sqrtPriceX96)
