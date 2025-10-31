@@ -1,6 +1,69 @@
 {
   "mined_blocks": [
     [
+      37574898,
+      "4bd6d6caaab6dc83106a28c43f7adf05ff2d17fd07cdc69e31f543ff9643da01",
+      "0xa6c3491ff1e9e4501f0f83fc3bc0b67c078e5e8b",
+      0.0,
+      21138
+    ],
+    [
+      37574849,
+      "ddcb63e6963c3c5e5df0c4b5cc273b1d6df1eef9c62bf772237bf92ae6492084",
+      "0xa6c3491ff1e9e4501f0f83fc3bc0b67c078e5e8b",
+      0.0,
+      21131
+    ],
+    [
+      37574796,
+      "618836cac9ed154a304f5e7b502e4df2bd0dc4070550a5f12a05daa80f925d62",
+      "0xa6c3491ff1e9e4501f0f83fc3bc0b67c078e5e8b",
+      0.0,
+      21125
+    ],
+    [
+      37574701,
+      "58f47359888dde4da31d56c5cbd3ceafebdf430b86887872d4d624482f46b582",
+      "0xa6c3491ff1e9e4501f0f83fc3bc0b67c078e5e8b",
+      0.0,
+      21119
+    ],
+    [
+      37574644,
+      "a2ea638e22542c1a15084c876c27ebcb39fafb697692a90b8b3d8cb788a7d88a",
+      "0xa6c3491ff1e9e4501f0f83fc3bc0b67c078e5e8b",
+      0.0,
+      21113
+    ],
+    [
+      37574577,
+      "079d7a00a2285ab7b82a0221ab231a886267a42e6fc9830a0af9a45f224a97ef",
+      "0xa6c3491ff1e9e4501f0f83fc3bc0b67c078e5e8b",
+      0.0,
+      21104
+    ],
+    [
+      37574453,
+      "fdbc69886fc7121a380d04b0baa4d8d73aae9b5fb0946bf5207f57fb0827e455",
+      "0xa6c3491ff1e9e4501f0f83fc3bc0b67c078e5e8b",
+      0.0,
+      21098
+    ],
+    [
+      37574398,
+      "a552db6c1b6bfb1e0b7c16d920f5100a8b866248bc7aa03d01df2f0af9a496b2",
+      "0xa6c3491ff1e9e4501f0f83fc3bc0b67c078e5e8b",
+      0.0,
+      21092
+    ],
+    [
+      37574322,
+      "71cc8aca7da83f29569c436b02d8f9d9eea12e84c959c9c092f4f7e0af387a91",
+      "0xa6c3491ff1e9e4501f0f83fc3bc0b67c078e5e8b",
+      0.0,
+      21085
+    ],
+    [
       37574287,
       "c639b9467e745f1237c74727fb040a23871203ad6598af00ea163aaadf2923a7",
       "0xa6c3491ff1e9e4501f0f83fc3bc0b67c078e5e8b",
@@ -17837,9 +17900,9 @@
       9
     ]
   ],
-  "total_blocks": 2548,
-  "last_updated": 1761937951,
-  "latest_block_number": 37574301,
+  "total_blocks": 2557,
+  "last_updated": 1761939276,
+  "latest_block_number": 37574963,
   "contract_address": "0x97bBa9F710DE42536843Bd1061514b5104D7DE50",
   "mint_topic": "0xcf6fbb9dcea7d07263ab4f5c3a92f53af33dffc421d9d121e1c74b307e68189d",
   "previous_challenge": "d805149d4b2bc1a6c051faca9c1d8c6cf1cedbc964cfe33e1766246b00ca7614"
