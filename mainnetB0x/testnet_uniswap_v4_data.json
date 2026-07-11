@@ -1,7 +1,7 @@
 {
   "metadata": {
-    "last_updated": "2026-07-11T12:37:24.206135",
-    "current_block": 48492041,
+    "last_updated": "2026-07-11T14:07:40.663591",
+    "current_block": 48494744,
     "start_block": 35956776,
     "target_pool_key": {
       "currency0": "0xa9520FC8c54691af586544aD13Db954AfC345cd4",
@@ -11,7 +11,7 @@
       "hooks": "0x983dD6eF6A9360331ba80Ed6322ea47fEb9AD000"
     },
     "total_valid_positions": 22,
-    "total_invalid_positions": 134,
+    "total_invalid_positions": 358,
     "total_nft_owners": 22
   },
   "valid_positions": [
